@@ -1,4 +1,4 @@
-
+from chess import Move
 
 MAX_MOVES: int = 149
 # Space represents 0 which shouldn't ever be used - we just use printable ascii chars to tokenise
@@ -56,6 +56,40 @@ def decode(token_data: []) -> str:
             output.append(f"{b}")
 
     return " ".join(output)
+
+
+def encode(move: Move) -> [int]:
+    # if move.short_castle:
+    #     tokens.push(SHORT_CASTLE);
+    # } else if ply.long_castle {
+    #     tokens.push(LONG_CASTLE);
+    # } else {
+    #     // Piece
+    #         let piece = match ply.piece {
+    #         'P' => PAWN,
+    #         'B' => BISHOP,
+    #         'N' => KNIGHT,
+    #         'Q' => QUEEN,
+    #         'R' => ROOK,
+    #         'K' => KING,
+    #         _ => panic!("Invalid piece")
+    #     };
+    #     tokens.push(piece);
+    #
+    #     if ply.take {
+    #         tokens.push(TAKE);
+    #     }
+    #
+    #     let file: i32 = (ply.file as i32 - 'a' as i32);
+    #     let rank: i32 = (ply.rank as i32 - '1' as i32);
+    #     let position = rank * 8 + file;
+    #     // Position
+    #     tokens.push(FIRST_POSITION + position as u8);
+    # }
+    # if ply.check {
+    #     tokens.push(CHECK);
+    # }
+    pass
 
 
 if __name__ == "main":

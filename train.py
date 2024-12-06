@@ -24,6 +24,8 @@ def train():
         raw_data = f.read(1000000)
 
     data = torch.tensor(list(raw_data), dtype=torch.long)
+
+    print("Example data")
     print(data.shape, data.dtype)
     print(data[:100])
 
@@ -42,20 +44,14 @@ def train():
         return x, y
 
     xb, yb = get_batch("train")
-    print("inputs:")
-    print(xb.shape)
-    print(xb)
-    print("targets:")
-    print(yb.shape)
-    print(yb)
-
-    print("----")
-
-    for b in range(batch_size):  # batch dimension
-        for t in range(block_size):  # time dimension
-            context = xb[b, :t+1]
-            target = yb[b, t]
-            print(f"when input is {context.tolist()} the target is: {target}")
+    # print("inputs:")
+    # print(xb.shape)
+    # print(xb)
+    # print("targets:")
+    # print(yb.shape)
+    # print(yb)
+    #
+    # print("----")
 
     model = BigramLanguageModel()
     m = model.to(device)
@@ -161,6 +157,20 @@ class MultiHeadAttention(nn.Module):
         return torch.cat([h(x) for h in self.heads], dim=-1)
 
 
+class FeedForward(nn.Module):
+    """ a simple linear layer followed by a non-linearity """
+
+    def __init__(self, n_embd):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, n_embd),
+            nn.ReLU(),
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
 class BigramLanguageModel(nn.Module):
 
     def __init__(self):
@@ -170,6 +180,7 @@ class BigramLanguageModel(nn.Module):
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
         # i.e. 4 heads of 8-dimensional self-attention = 32 (same as n_embd)
         self.sa_head = MultiHeadAttention(4, n_embd//4)
+        self.ffwd = FeedForward(n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
     def forward(self, idx, targets=None):
@@ -180,6 +191,7 @@ class BigramLanguageModel(nn.Module):
         pos_emb = self.position_embedding_table(torch.arange(T, device=device))  # (T, C)
         x = tok_emb + pos_emb  # (batch, time, channel)
         x = self.sa_head(x)  # apply one head of self-attention. (B, T, C)
+        x = self.ffwd(x)  # (B, T, C)
         logits = self.lm_head(x)  # (batch, time, vocab_size)
 
         if targets is None:

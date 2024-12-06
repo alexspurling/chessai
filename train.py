@@ -11,7 +11,7 @@ block_size = 8   # what is the maximum context length for predictions?
 max_iters = 5000
 eval_interval = 500
 learning_rate = 1e-3
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cpu" if torch.cuda.is_available() else "cpu"
 eval_iters = 200
 n_embd = 32
 
@@ -112,8 +112,8 @@ def train():
     print("Time taken", (time.time() - start_time))
 
     print("Device is", device)
-    # Create 1x1 tensor holding zeros to hold indices?
-    idx = torch.zeros((1, 1), dtype=torch.long, device=device)
+    # Create 1x1 tensor holding 33s representing the "1." token
+    idx = torch.full((1, 1), 33, dtype=torch.long, device=device)
     # Retrieve the first batch and convert it from a tensor into a python list
     first_batch = m.generate(idx, max_new_tokens=100)[0].tolist()
     output = decode(first_batch)
@@ -152,9 +152,12 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, num_heads, head_size):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
+        self.proj = nn.Linear(n_embd, n_embd)
 
     def forward(self, x):
-        return torch.cat([h(x) for h in self.heads], dim=-1)
+        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        out = self.proj(out)
+        return out
 
 
 class FeedForward(nn.Module):
@@ -163,8 +166,9 @@ class FeedForward(nn.Module):
     def __init__(self, n_embd):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_embd, n_embd),
+            nn.Linear(n_embd, 4 * n_embd),
             nn.ReLU(),
+            nn.Linear(4 * n_embd, n_embd)
         )
 
     def forward(self, x):
@@ -181,8 +185,8 @@ class Block(nn.Module):
         self.ffwd = FeedForward(n_embd)
 
     def forward(self, x):
-        x = self.sa(x)
-        x = self.ffwd(x)
+        x = x + self.sa(x)
+        x = x + self.ffwd(x)
         return x
 
 

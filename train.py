@@ -14,6 +14,9 @@ learning_rate = 1e-3
 device = "cpu" if torch.cuda.is_available() else "cpu"
 eval_iters = 200
 n_embd = 32
+n_head = 4
+n_layer = 3
+dropout = 0.2
 
 vocab_size = 256
 
@@ -55,6 +58,9 @@ def train():
 
     model = BigramLanguageModel()
     m = model.to(device)
+
+    # print the number of parameters in the model
+    print(sum(p.numel() for p in m.parameters()) / 1e6, "M parameters")
     logits, loss = m(xb, yb)
     print(logits.shape)
     print(loss)
@@ -132,6 +138,8 @@ class Head(nn.Module):
         self.value = nn.Linear(n_embd, head_size, bias=False)
         self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
 
+        self.dropout = nn.Dropout(dropout)
+
     def forward(self, x):
         B, T, C = x.shape
         k = self.key(x)    # (B, T, C)
@@ -168,7 +176,8 @@ class FeedForward(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(n_embd, 4 * n_embd),
             nn.ReLU(),
-            nn.Linear(4 * n_embd, n_embd)
+            nn.Linear(4 * n_embd, n_embd),
+            nn.Dropout(dropout),
         )
 
     def forward(self, x):
@@ -201,12 +210,8 @@ class BigramLanguageModel(nn.Module):
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
         # i.e. 4 heads of 8-dimensional self-attention = 32 (same as n_embd)
-        self.blocks = nn.Sequential(
-            Block(n_embd, n_head=4),
-            Block(n_embd, n_head=4),
-            Block(n_embd, n_head=4),
-            nn.LayerNorm(n_embd),
-        )
+        self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
+        self.ln_f = nn.LayerNorm(n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
     def forward(self, idx, targets=None):
@@ -217,6 +222,7 @@ class BigramLanguageModel(nn.Module):
         pos_emb = self.position_embedding_table(torch.arange(T, device=device))  # (T, C)
         x = tok_emb + pos_emb  # (batch, time, channel)
         x = self.blocks(x)  # (B, T, C)
+        x = self.ln_f(x)  # (B, T, C)
         logits = self.lm_head(x)  # (batch, time, vocab_size)
 
         if targets is None:

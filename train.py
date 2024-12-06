@@ -7,13 +7,13 @@ import time
 
 # Hyperparameters
 batch_size = 64  # How many independent sequences will we process in parallel?
-block_size = 64   # what is the maximum context length for predictions?
+block_size = 128   # what is the maximum context length for predictions?
 max_iters = 5000
 eval_interval = 500
 learning_rate = 3e-4
 device = "cuda" if torch.cuda.is_available() else "cpu"
 eval_iters = 200
-n_embd = 64
+n_embd = 256
 n_head = 4
 n_layer = 3
 dropout = 0.2
@@ -22,6 +22,9 @@ vocab_size = 256
 
 
 def train():
+
+    print("Device is", device)
+    print("Opening training data")
 
     with open("../../rust/chessai/tokens.bin", "rb") as f:
         raw_data = f.read(1000000)
@@ -83,16 +86,8 @@ def train():
 
     expected_loss = -math.log(1 / vocab_size)
 
-    print("Device is", device)
-    # Create 1x1 tensor holding zeros to hold indices?
-    context = torch.zeros((1, 1), dtype=torch.long, device=device)
-    # Retrieve the first batch and convert it from a tensor into a python list
-    first_batch = m.generate(context, max_new_tokens=100)[0].tolist()
-    output = decode(first_batch)
-
-    # Outputs garbage because we haven't trained the model yet!
     print("Untrained random output: ")
-    print(output)
+    test(m, 1)
 
     # Adam is an optimizer like Stochastic Gradient Descent but apparently better
     # Learning rate 1e-3 can be changed?
@@ -118,15 +113,23 @@ def train():
     print("Final Loss:", loss.item(), "Expected loss:", expected_loss)
     print("Time taken", (time.time() - start_time))
 
-    print("Device is", device)
-    # Create 1x1 tensor holding 33s representing the "1." token
-    idx = torch.full((1, 1), 33, dtype=torch.long, device=device)
-    # Retrieve the first batch and convert it from a tensor into a python list
-    first_batch = m.generate(idx, max_new_tokens=100)[0].tolist()
-    output = decode(first_batch)
+    test(m, 1)
 
-    # Outputs garbage because we haven't trained the model yet!
-    print(output)
+
+
+def test(m, num_tests):
+    # Create 1x1 tensor holding 33s representing the "1." token
+    # idx = torch.full((1, 1), 33, dtype=torch.long, device=device)
+    print("Test with 1. prompt")
+    for i in range(0, num_tests):
+        idx = torch.tensor([[33]], dtype=torch.long, device=device)
+        # Retrieve the first batch and convert it from a tensor into a python list
+        print(decode(m.generate(idx, max_new_tokens=50)[0].tolist()))
+    print("Test with 1. e4 e5 2. prompt")
+    for i in range(0, num_tests):
+        idx = torch.tensor([[33, 184, 227, 184, 228, 34]], dtype=torch.long, device=device)
+        # Retrieve the first batch and convert it from a tensor into a python list
+        print(decode(m.generate(idx, max_new_tokens=50)[0].tolist()))
 
 
 class Head(nn.Module):

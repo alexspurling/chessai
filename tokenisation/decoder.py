@@ -39,7 +39,7 @@ def decode(token_data: []) -> str:
         elif b == BISHOP:
             output.append(f"B")
         elif b == KNIGHT:
-            output.append(f"K")
+            output.append(f"N")
         elif b == QUEEN:
             output.append(f"Q")
         elif b == ROOK:

@@ -161,7 +161,7 @@ class ChessModel():
 
         if os.path.exists(model_state_file):
             print(f"Loading existing model from {model_state_file}")
-            self.model.load_state_dict(torch.load(model_state_file, weights_only=True))
+            self.model.load_state_dict(torch.load(model_state_file, weights_only=True, map_location=device))
         self.m = self.model.to(device)
 
         # print the number of parameters in the model
@@ -243,8 +243,11 @@ class ChessModel():
         for i in range(10):
             print(decode(self.generate()))
 
-    def generate(self, start_with=None):
+    def generate(self, start_with=None, num_moves_to_generate=10):
         start_with = start_with if start_with is not None else [33]
         idx = torch.tensor([start_with], dtype=torch.long, device=device)
         # Retrieve the first batch and convert it from a tensor into a python list
-        return self.m.generate(idx, max_new_tokens=10)[0].tolist()
+        all_batches = self.m.generate(idx, max_new_tokens=num_moves_to_generate)
+        for x in all_batches:
+            print(x)
+        return all_batches[0].tolist()

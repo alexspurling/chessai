@@ -1,4 +1,5 @@
-from chess import Move
+import chess
+from chess import Move, Piece, Board
 
 MAX_MOVES: int = 149
 # Space represents 0 which shouldn't ever be used - we just use printable ascii chars to tokenise
@@ -15,6 +16,7 @@ KING: int = LONG_CASTLE + 6
 TAKE: int = KING + 1
 CHECK: int = TAKE + 1
 FIRST_POSITION: int = CHECK + 1
+LAST_POSITION: int = FIRST_POSITION + 64
 
 
 def decode_position(b):
@@ -24,72 +26,71 @@ def decode_position(b):
     return f"{file}{rank}"
 
 
+def decode_token(b: int) -> str:
+    if FIRST_NUM <= b <= LAST_NUM:
+        return f"{b - FIRST_NUM}."
+    elif b == SHORT_CASTLE:
+        return f"O-O"
+    elif b == LONG_CASTLE:
+        return f"O-O-O"
+    elif b == PAWN:
+        return f"P"
+    elif b == BISHOP:
+        return f"B"
+    elif b == KNIGHT:
+        return f"N"
+    elif b == QUEEN:
+        return f"Q"
+    elif b == ROOK:
+        return f"R"
+    elif b == KING:
+        return f"K"
+    elif b == TAKE:
+        return f"x"
+    elif b == CHECK:
+        return f"+"
+    elif b >= FIRST_POSITION:
+        return decode_position(b)
+    else:
+        return f"{b}"
+
+
 def decode(token_data: []) -> str:
 
     output = []
     for b in token_data:
-        if FIRST_NUM <= b <= LAST_NUM:
-            output.append(f"{b - FIRST_NUM}.")
-        elif b == SHORT_CASTLE:
-            output.append(f"O-O")
-        elif b == LONG_CASTLE:
-            output.append(f"O-O-O")
-        elif b == PAWN:
-            output.append(f"P")
-        elif b == BISHOP:
-            output.append(f"B")
-        elif b == KNIGHT:
-            output.append(f"N")
-        elif b == QUEEN:
-            output.append(f"Q")
-        elif b == ROOK:
-            output.append(f"R")
-        elif b == KING:
-            output.append(f"K")
-        elif b == TAKE:
-            output.append(f"x")
-        elif b == CHECK:
-            output.append(f"+")
-        elif b >= FIRST_POSITION:
-            output.append(decode_position(b))
-        else:
-            output.append(f"{b}")
+        output.append(decode_token(b))
 
     return " ".join(output)
 
 
-def encode(move: Move) -> [int]:
-    # if move.short_castle:
-    #     tokens.push(SHORT_CASTLE);
-    # } else if ply.long_castle {
-    #     tokens.push(LONG_CASTLE);
-    # } else {
-    #     // Piece
-    #         let piece = match ply.piece {
-    #         'P' => PAWN,
-    #         'B' => BISHOP,
-    #         'N' => KNIGHT,
-    #         'Q' => QUEEN,
-    #         'R' => ROOK,
-    #         'K' => KING,
-    #         _ => panic!("Invalid piece")
-    #     };
-    #     tokens.push(piece);
-    #
-    #     if ply.take {
-    #         tokens.push(TAKE);
-    #     }
-    #
-    #     let file: i32 = (ply.file as i32 - 'a' as i32);
-    #     let rank: i32 = (ply.rank as i32 - '1' as i32);
-    #     let position = rank * 8 + file;
-    #     // Position
-    #     tokens.push(FIRST_POSITION + position as u8);
-    # }
-    # if ply.check {
-    #     tokens.push(CHECK);
-    # }
-    pass
+encode_piece_map = {
+    chess.PAWN: PAWN,
+    chess.BISHOP: BISHOP,
+    chess.KNIGHT: KNIGHT,
+    chess.QUEEN: QUEEN,
+    chess.ROOK: ROOK,
+    chess.KING: KING
+}
+
+
+def encode(board: Board, move: Move) -> [int]:
+    tokens = []
+    if board.is_kingside_castling(move):
+        tokens.append(SHORT_CASTLE)
+    if board.is_queenside_castling(move):
+        tokens.append(LONG_CASTLE)
+    else:
+        # Piece
+        tokens.append(encode_piece_map[board.piece_at(move.from_square).piece_type])
+        if board.is_capture(move):
+            tokens.append(TAKE)
+        # Position
+        tokens.append(FIRST_POSITION + move.to_square)
+
+    if board.is_into_check(move):
+        tokens.append(CHECK)
+    return tokens
 
 
 if __name__ == "main":

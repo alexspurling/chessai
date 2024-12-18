@@ -78,11 +78,16 @@ def encode(board: Board, move: Move) -> [int]:
     tokens = []
     if board.is_kingside_castling(move):
         tokens.append(SHORT_CASTLE)
-    if board.is_queenside_castling(move):
+    elif board.is_queenside_castling(move):
         tokens.append(LONG_CASTLE)
     else:
-        # Piece
-        tokens.append(encode_piece_map[board.piece_at(move.from_square).piece_type])
+        # No special token is used to indicate a promotion - we just transform the pawn to a new piece
+        if move.promotion is not None:
+            tokens.append(encode_piece_map[move.promotion])
+        else:
+            # Piece
+            tokens.append(encode_piece_map[board.piece_at(move.from_square).piece_type])
+
         if board.is_capture(move):
             tokens.append(TAKE)
         # Position

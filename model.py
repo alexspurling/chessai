@@ -8,8 +8,8 @@ from tokenisation.decoder import decode
 import time
 
 # Hyperparameters
-batch_size = 64   # How many independent sequences will we process in parallel?
-block_size = 128  # what is the maximum context length for predictions?
+batch_size = 4   # How many independent sequences will we process in parallel?
+block_size = 8  # what is the maximum context length for predictions?
 max_iters = 5000
 eval_interval = 500
 learning_rate = 3e-4
@@ -248,6 +248,4 @@ class ChessModel():
         idx = torch.tensor([start_with], dtype=torch.long, device=device)
         # Retrieve the first batch and convert it from a tensor into a python list
         all_batches = self.m.generate(idx, max_new_tokens=num_moves_to_generate)
-        for x in all_batches:
-            print(x)
         return all_batches[0].tolist()

@@ -1,5 +1,5 @@
 import chess
-from chess import Board
+from chess import Board, Move
 
 from tokenisation.decoder import PAWN, KING, FIRST_POSITION, LAST_POSITION, decode, decode_token, FIRST_NUM, LAST_NUM, \
     encode, SHORT_CASTLE, LONG_CASTLE
@@ -17,7 +17,7 @@ def get_legal_move(board, piece, position):
 
 
 # Returns the list of tokens that make up a valid move on the given board
-def find_next_move(board, tokens, token_start_idx):
+def find_next_move(board, tokens, token_start_idx) -> (int, Move):
     piece = None
     position = None
     for i in range(token_start_idx, len(tokens)):
@@ -83,7 +83,7 @@ def play(play_as):
 
     m = ChessModel("savedmodel.pt")
 
-    while True:
+    while not b.is_checkmate():
         token_idx = len(game_tokens)  # start evaluating the generated tokens from this index
 
         print("Continuing game:")
@@ -120,5 +120,51 @@ def play(play_as):
             print(f"Invalid move at {token_idx}. Regenerating...")
 
 
-play("black")
+# play("black")
+
+
+class OnlineGame:
+
+    def __init__(self):
+        self.b = Board()
+        self.m = ChessModel("savedmodel.pt")
+        self.game_tokens = [33]
+
+    def make_move(self, uci_move):
+        move = self.b.parse_uci(uci_move)
+        move_tokens = encode(self.b, move)
+        self.game_tokens.extend(move_tokens)
+        self.b.push(move)
+
+        token_idx = len(self.game_tokens)
+
+        while True:
+
+            print("Generating moves from position: ", decode(self.game_tokens))
+            tokens = self.m.generate(self.game_tokens)
+            (valid_token_idx, new_move) = find_next_move(self.b, tokens, token_idx)
+
+            if new_move is not None:
+                print("Engine played:", new_move)
+                self.b.push(new_move)
+                # Reset the game tokens to only include those we deemed to be valid
+                self.game_tokens = tokens[:valid_token_idx]
+
+                # if play_as == "white":
+                # Add a move num token if playing as white
+                self.game_tokens.append(FIRST_NUM + self.b.fullmove_number)
+
+                print("Current game tokens")
+                print(decode(self.game_tokens))
+
+                return new_move.uci()
+            else:
+                print("Generated invalid move:", tokens[token_idx:])
+
+    def get_fen(self):
+        return self.b.fen()
+
+    def reset(self):
+        self.b.reset()
+        self.game_tokens = [33]
 

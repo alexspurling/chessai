@@ -8,8 +8,8 @@ from tokenisation.decoder import decode
 import time
 
 # Hyperparameters
-batch_size = 4   # How many independent sequences will we process in parallel?
-block_size = 8  # what is the maximum context length for predictions?
+batch_size = 64   # How many independent sequences will we process in parallel?
+block_size = 128  # what is the maximum context length for predictions?
 max_iters = 5000
 eval_interval = 500
 learning_rate = 3e-4

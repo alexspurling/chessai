@@ -2,7 +2,8 @@ var config = {
   pieceTheme: 'static/images/chesspieces/wikipedia/{piece}.png',
   position: 'start',
   draggable: true,
-  onDrop: handleMove
+  onDrop: handleMove,
+  moveTime: 1000
 }
 const board = Chessboard('board', config);
 const game = new Chess();
@@ -19,7 +20,7 @@ function getBoard() {
         playAs = body['playAs'];
         board.orientation(playAs);
         game.load(body['fen']);
-        board.position(game.fen());
+        board.position(body['fen']);
         checkGameOver();
     });
 }
@@ -51,8 +52,9 @@ function handleMove(source, target) {
         }
         return response.json();
     }).then((body) => {
+        console.log("Engine played", body['engineMove']);
         game.load(body['fen']);
-        board.position(game.fen());
+        board.position(body['fen']);
         checkGameOver();
     }).catch((e) => {
         console.error("Error", e);

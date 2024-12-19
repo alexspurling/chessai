@@ -93,7 +93,7 @@ def encode(board: Board, move: Move) -> [int]:
         # Position
         tokens.append(FIRST_POSITION + move.to_square)
 
-    if board.is_into_check(move):
+    if board.gives_check(move):
         tokens.append(CHECK)
     return tokens
 

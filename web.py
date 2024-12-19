@@ -66,7 +66,7 @@ def make_move(move_request: MoveRequest):
 
     print(time.time(), "Returning engine move", engine_move)
 
-    return {'fen': online_game.get_fen(), 'engine_move': engine_move}
+    return {'fen': online_game.get_fen(), 'engineMove': engine_move.uci()}
 
 
 class ResetRequest(BaseModel):
@@ -80,7 +80,7 @@ def reset_board(reset_request: ResetRequest):
     """
     global online_game
     engine_move = online_game.reset(reset_request.playAs)
-    return {'fen': online_game.get_fen(), 'engine_move': engine_move}
+    return {'fen': online_game.get_fen(), 'engineMove': engine_move}
 
 
 if __name__ == "__main__":

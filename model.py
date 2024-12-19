@@ -13,7 +13,7 @@ block_size = 128  # what is the maximum context length for predictions?
 max_iters = 5000
 eval_interval = 500
 learning_rate = 3e-4
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cpu" if torch.cuda.is_available() else "cpu"
 eval_iters = 200
 n_embd = 256
 n_head = 4
@@ -243,7 +243,7 @@ class ChessModel():
         for i in range(10):
             print(decode(self.generate()))
 
-    def generate(self, start_with=None, num_moves_to_generate=10):
+    def generate(self, start_with=None, num_moves_to_generate=2):
         start_with = start_with if start_with is not None else [33]
         idx = torch.tensor([start_with], dtype=torch.long, device=device)
         # Retrieve the first batch and convert it from a tensor into a python list

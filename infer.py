@@ -57,7 +57,7 @@ def find_next_move(board, tokens, token_start_idx) -> (int, Move):
             if valid_move is not None:
                 # We consumed some valid tokens up until i
                 return i + 1, valid_move
-    return None
+    return [], None
 
 
 def get_next_human_move(board: Board):
@@ -147,7 +147,11 @@ class OnlineGame:
         new_move = None
         while new_move is None:
             print(time.time(), "Generating tokens")
-            tokens = self.m.generate(self.game_tokens)
+            generate_start_time = time.time()
+            tokens = self.m.generate(self.game_tokens, num_moves_to_generate=4)
+            new_tokens = tokens[len(self.game_tokens):]
+            generate_time = time.time() - generate_start_time
+            print(time.time(), "Generated new tokens", new_tokens, "in", generate_time)
             print(time.time(), "Finding next move")
             (valid_token_idx, new_move) = find_next_move(self.b, tokens, token_idx)
             print(time.time(), "Found move", new_move)
@@ -175,6 +179,7 @@ class OnlineGame:
 
         print(time.time(), "Current game tokens")
         print(decode(self.game_tokens))
+        return new_move
 
     def make_move(self, uci_move):
         print(time.time(), "Parsing move", uci_move)

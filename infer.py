@@ -147,7 +147,9 @@ class OnlineGame:
         new_move = None
         while new_move is None:
             tokens = self.m.generate(self.game_tokens)
+            print(time.time(), "Finding next move")
             (valid_token_idx, new_move) = find_next_move(self.b, tokens, token_idx)
+            print(time.time(), "Found move", new_move)
 
             if new_move is not None:
                 # Reset the game tokens to only include those we deemed to be valid

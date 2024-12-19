@@ -4,51 +4,56 @@ import chess
 import chess.pgn
 
 # Import your `find_next_move` function
-from infer import find_next_move, OnlineGame
+# from infer import find_next_move, OnlineGame
 
 app = Flask(__name__)
 CORS(app)
 
 # Initialize a chess board
-online_game = OnlineGame()
+# online_game = OnlineGame()
 
 
-@app.route('/get_board', methods=['GET'])
-def get_board():
-    """
-    Returns the current board state in FEN notation.
-    """
-    global online_game
-    return jsonify({'fen': online_game.get_fen(), 'playAs': online_game.play_as})
+@app.route('/', methods=['GET'])
+def root():
+    return "Hello world"
 
-
-@app.route('/make_move', methods=['POST'])
-def make_move():
-    """
-    Player makes a move. This function updates the board and gets the engine's response.
-    """
-    global online_game
-    player_move = request.json.get('move')  # Move in UCI format, e.g., "e2e4"
-    print("Got move", player_move)
-
-    try:
-        # Apply the player's move
-        engine_move = online_game.make_move(player_move)
-
-        return jsonify({'fen': online_game.get_fen(), 'engine_move': engine_move})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
-
-@app.route('/reset', methods=['POST'])
-def reset_board():
-    """
-    Resets the board to the initial state.
-    """
-    global online_game
-    play_as = request.json.get('playAs')  # Move in UCI format, e.g., "e2e4"
-    engine_move = online_game.reset(play_as)
-    return jsonify({'fen': online_game.get_fen(), 'engine_move': engine_move})
+#
+# @app.route('/get_board', methods=['GET'])
+# def get_board():
+#     """
+#     Returns the current board state in FEN notation.
+#     """
+#     global online_game
+#     return jsonify({'fen': online_game.get_fen(), 'playAs': online_game.play_as})
+#
+#
+# @app.route('/make_move', methods=['POST'])
+# def make_move():
+#     """
+#     Player makes a move. This function updates the board and gets the engine's response.
+#     """
+#     global online_game
+#     player_move = request.json.get('move')  # Move in UCI format, e.g., "e2e4"
+#     print("Got move", player_move)
+#
+#     try:
+#         # Apply the player's move
+#         engine_move = online_game.make_move(player_move)
+#
+#         return jsonify({'fen': online_game.get_fen(), 'engine_move': engine_move})
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 400
+#
+#
+# @app.route('/reset', methods=['POST'])
+# def reset_board():
+#     """
+#     Resets the board to the initial state.
+#     """
+#     global online_game
+#     play_as = request.json.get('playAs')  # Move in UCI format, e.g., "e2e4"
+#     engine_move = online_game.reset(play_as)
+#     return jsonify({'fen': online_game.get_fen(), 'engine_move': engine_move})
 
 
 if __name__ == '__main__':

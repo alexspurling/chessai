@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from infer import OnlineGame
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -37,6 +37,11 @@ online_game = OnlineGame()
 @app.get("/", include_in_schema=False)
 def read_root():
     return FileResponse("static/index.html")
+
+
+@app.head("/")
+def read_root_head():
+    return Response()
 
 
 @app.get('/get_board')

@@ -57,13 +57,14 @@ def make_move(move_request: MoveRequest):
     """
     Player makes a move. This function updates the board and gets the engine's response.
     """
-    global online_game
     print(time.time(), "Got player move", move_request.move)
+    global online_game
 
+    print(time.time(), "Requesting engine move")
     # Apply the player's move in UCI format e.g. e2e4
     engine_move = online_game.make_move(move_request.move)
 
-    print(time.time(), "Got engine move", engine_move)
+    print(time.time(), "Returning engine move", engine_move)
 
     return {'fen': online_game.get_fen(), 'engine_move': engine_move}
 

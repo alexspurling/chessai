@@ -136,7 +136,7 @@ class OnlineGame:
         self.game_tokens = [33]
         self.play_as = "white"
         self.reset(self.play_as)
-        self.time_per_move = 1
+        self.time_per_move = 10
         print("Start up time was", (time.time() - start_time))
 
     def _make_move(self):
@@ -146,6 +146,7 @@ class OnlineGame:
         move_start_time = time.time()
         new_move = None
         while new_move is None:
+            print(time.time(), "Generating tokens")
             tokens = self.m.generate(self.game_tokens)
             print(time.time(), "Finding next move")
             (valid_token_idx, new_move) = find_next_move(self.b, tokens, token_idx)
@@ -165,24 +166,30 @@ class OnlineGame:
                         break
                     print("No move found in time limit. Generated random move:", new_move)
 
-        print("Engine played:", new_move)
+        print(time.time(), "Engine played:", new_move)
         self.b.push(new_move)
 
         if self.play_as == "white":
             # Add a move num token if playing as white
             self.game_tokens.append(FIRST_NUM + self.b.fullmove_number)
 
-        print("Current game tokens")
+        print(time.time(), "Current game tokens")
         print(decode(self.game_tokens))
 
     def make_move(self, uci_move):
+        print(time.time(), "Parsing move", uci_move)
         move = self.b.parse_uci(uci_move)
+        print(time.time(), "Encoding move", move)
         move_tokens = encode(self.b, move)
+        print(time.time(), "Extending tokens")
         self.game_tokens.extend(move_tokens)
+        print(time.time(), "Pushing move to board")
         self.b.push(move)
+        print(time.time(), "Checking game over state")
         if self.b.is_game_over():
             print(f"Game over", self.b.outcome())
             return None
+        print(time.time(), "Requesting engine move")
         engine_move = self._make_move()
         if self.b.is_game_over():
             print(f"Game over", self.b.outcome())

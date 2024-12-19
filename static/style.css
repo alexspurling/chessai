@@ -1,64 +1,80 @@
 
-        #board {
-            width: 600px;
-            margin: 20px auto;
-        }
-        #reset {
-            display: block;
-            margin: auto;
-            padding: 10px 20px;
-            font-size: 16px;
-        }
-        #outcome {
-            width: 600px;
-            display: block;
-            margin: auto;
-            padding: 10px 20px;
-            font-size: 16px;
-            text-align: center;
-        }
-        #thinking {
-            width: 600px;
-            display: block;
-            margin: auto;
-            padding: 10px 20px;
-            font-size: 16px;
-            text-align: center;
-        }
-        span {
-          animation: gradient 2.4s infinite ease-in-out;
-        }
+.container {
+    width: 100%;
+    max-width: 640px; /* Limit the width for larger screens */
+    margin: auto;
+}
 
-        .a01{
-          animation-delay: 0.0s;
-        }
-        .a02{
-          animation-delay: 0.2s;
-        }
-        .a03{
-          animation-delay: 0.4s;
-        }
-        .a04{
-          animation-delay: 0.6s;
-        }
-        .a05{
-          animation-delay: 0.8s;
-        }
-        .a06{
-          animation-delay: 1.0s;
-        }
-        @keyframes gradient{
-          0%{
-            letter-spacing: 0px;
-            text-indent: 0px;
-          }
-          50%{
-            letter-spacing: 5px;
-            text-indent: 5px;
-          }
+/* Mobile Specific Styles */
+@media (max-width: 768px) {
+    .container {
+        margin: auto;
+    }
+    #board {
+        margin: auto;
+    }
+}
 
-          100%{
-            letter-spacing: 0px;
-            text-indent: 0px;
-          }
-        }
+#board {
+    /* width: 600px; */
+    margin: 0px auto 20px;
+}
+#reset {
+    display: block;
+    margin: auto;
+    padding: 10px 20px;
+    font-size: 16px;
+}
+#outcome {
+    width: 200px;
+    display: block;
+    margin: auto;
+    padding: 10px 20px;
+    font-size: 16px;
+    text-align: center;
+}
+#thinking {
+    width: 150px;
+    display: block;
+    margin: auto;
+    padding: 10px 20px;
+    font-size: 16px;
+    text-align: center;
+}
+span {
+    animation: gradient 2.4s infinite ease-in-out;
+}
+
+.a01{
+    animation-delay: 0.0s;
+}
+.a02{
+    animation-delay: 0.2s;
+}
+.a03{
+    animation-delay: 0.4s;
+}
+.a04{
+    animation-delay: 0.6s;
+}
+.a05{
+    animation-delay: 0.8s;
+}
+.a06{
+    animation-delay: 1.0s;
+}
+@keyframes gradient{
+    0%{
+        letter-spacing: 0px;
+        text-indent: 0px;
+    }
+    50%{
+        letter-spacing: 5px;
+        text-indent: 5px;
+    }
+
+    100%{
+        letter-spacing: 0px;
+        text-indent: 0px;
+    }
+}

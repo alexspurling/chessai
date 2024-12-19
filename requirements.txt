@@ -1,6 +1,5 @@
 chess==1.11.1
-Flask==3.1.0
-flask-cors==5.0.0
+fastapi[all]
 # Check the README for how to install pytorch locally with GPU support
-# torch==2.5.1
+torch==2.5.1
 zstandard==0.23.0

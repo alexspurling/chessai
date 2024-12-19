@@ -19,7 +19,7 @@ def get_board():
     Returns the current board state in FEN notation.
     """
     global online_game
-    return jsonify({'fen': online_game.get_fen()})
+    return jsonify({'fen': online_game.get_fen(), 'playAs': online_game.play_as})
 
 
 @app.route('/make_move', methods=['POST'])
@@ -46,8 +46,9 @@ def reset_board():
     Resets the board to the initial state.
     """
     global online_game
-    online_game.reset()
-    return Response(status=200)
+    play_as = request.json.get('playAs')  # Move in UCI format, e.g., "e2e4"
+    engine_move = online_game.reset(play_as)
+    return jsonify({'fen': online_game.get_fen(), 'engine_move': engine_move})
 
 
 if __name__ == '__main__':

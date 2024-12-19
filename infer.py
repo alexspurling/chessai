@@ -1,8 +1,9 @@
 import chess
 from chess import Board, Move
+import time
 
 from tokenisation.decoder import PAWN, KING, FIRST_POSITION, LAST_POSITION, decode, decode_token, FIRST_NUM, LAST_NUM, \
-    encode, SHORT_CASTLE, LONG_CASTLE
+    encode, SHORT_CASTLE, LONG_CASTLE, decode_position
 from model import ChessModel
 
 
@@ -51,6 +52,7 @@ def find_next_move(board, tokens, token_start_idx) -> (int, Move):
             position = token - FIRST_POSITION
 
         if piece is not None and position is not None:
+            print(f"Generated: {piece}{decode_position(position + FIRST_POSITION)}")
             valid_move = get_legal_move(board, piece, position)
             if valid_move is not None:
                 # We consumed some valid tokens up until i
@@ -126,45 +128,76 @@ def play(play_as):
 class OnlineGame:
 
     def __init__(self):
+        start_time = time.time()
         self.b = Board()
+        model_load_start_time = time.time()
         self.m = ChessModel("savedmodel.pt")
+        print("Model load time was", (time.time() - model_load_start_time))
         self.game_tokens = [33]
+        self.play_as = "white"
+        self.reset(self.play_as)
+        self.time_per_move = 1
+        print("Start up time was", (time.time() - start_time))
+
+    def _make_move(self):
+        token_idx = len(self.game_tokens)
+        print("Generating moves from position: ", decode(self.game_tokens))
+
+        move_start_time = time.time()
+        new_move = None
+        while new_move is None:
+            tokens = self.m.generate(self.game_tokens)
+            (valid_token_idx, new_move) = find_next_move(self.b, tokens, token_idx)
+
+            if new_move is not None:
+                # Reset the game tokens to only include those we deemed to be valid
+                self.game_tokens = tokens[:valid_token_idx]
+            else:
+                print("Generated invalid move")
+                # print("Generated invalid move:", tokens[token_idx:])
+                if time.time() - move_start_time > self.time_per_move:
+                    for new_move in self.b.generate_legal_moves():
+                        # Add the random move to our encoded tokens list
+                        move_tokens = encode(self.b, new_move)
+                        self.game_tokens.extend(move_tokens)
+                        break
+                    print("No move found in time limit. Generated random move:", new_move)
+
+        print("Engine played:", new_move)
+        self.b.push(new_move)
+
+        if self.play_as == "white":
+            # Add a move num token if playing as white
+            self.game_tokens.append(FIRST_NUM + self.b.fullmove_number)
+
+        print("Current game tokens")
+        print(decode(self.game_tokens))
 
     def make_move(self, uci_move):
         move = self.b.parse_uci(uci_move)
         move_tokens = encode(self.b, move)
         self.game_tokens.extend(move_tokens)
         self.b.push(move)
-
-        token_idx = len(self.game_tokens)
-
-        while True:
-
-            print("Generating moves from position: ", decode(self.game_tokens))
-            tokens = self.m.generate(self.game_tokens)
-            (valid_token_idx, new_move) = find_next_move(self.b, tokens, token_idx)
-
-            if new_move is not None:
-                print("Engine played:", new_move)
-                self.b.push(new_move)
-                # Reset the game tokens to only include those we deemed to be valid
-                self.game_tokens = tokens[:valid_token_idx]
-
-                # if play_as == "white":
-                # Add a move num token if playing as white
-                self.game_tokens.append(FIRST_NUM + self.b.fullmove_number)
-
-                print("Current game tokens")
-                print(decode(self.game_tokens))
-
-                return new_move.uci()
-            else:
-                print("Generated invalid move:", tokens[token_idx:])
+        if self.b.is_game_over():
+            print(f"Game over", self.b.outcome())
+            return None
+        engine_move = self._make_move()
+        if self.b.is_game_over():
+            print(f"Game over", self.b.outcome())
+            winner = "black" if self.play_as == "white" else "black"
+            print(f"Checkmate. {winner} wins.")
+        return engine_move
 
     def get_fen(self):
         return self.b.fen()
 
-    def reset(self):
+    def reset(self, play_as):
+        self.play_as = play_as
         self.b.reset()
         self.game_tokens = [33]
+
+        # if the other player is black, then we get to make the first move
+        if self.play_as == "black":
+            return self._make_move()
+        return None
 

@@ -12,7 +12,10 @@
             crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.js"
             crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.js" integrity="sha512-oprzqYFJfo4Bx/nNEcSI0xo7ggJrLc+qQ6hrS3zV/Jn0C4dsg4gu+FXW/Vm0jP9CrV7e5e6dcLUYkg3imjfjbw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.js"
+            integrity="sha512-oprzqYFJfo4Bx/nNEcSI0xo7ggJrLc+qQ6hrS3zV/Jn0C4dsg4gu+FXW/Vm0jP9CrV7e5e6dcLUYkg3imjfjbw=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"></script>
     <style>
         #board {
             width: 600px;
@@ -24,89 +27,21 @@
             padding: 10px 20px;
             font-size: 16px;
         }
+        #outcome {
+            width: 600px;
+            display: block;
+            margin: auto;
+            padding: 10px 20px;
+            font-size: 16px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 <div id="board"></div>
 <button id="reset">Reset Game</button>
+<div id="outcome"></div>
 
-<script>
-    var config = {
-      pieceTheme: 'chessboardjs-1.0.0/img/chesspieces/wikipedia/{piece}.png',
-      position: 'start',
-      draggable: true,
-      onDrop: handleMove
-    }
-    const board = Chessboard('board', config);
-    const game = new Chess();
-
-    function getBoard() {
-        fetch('http://127.0.0.1:5000/get_board')
-        .then((response) => {
-            return response.json();
-        }).then((body) => {
-            game.load(body['fen']);
-            board.position(game.fen());
-        });
-    }
-
-    function handleMove(source, target) {
-        let move = source + target;
-        // Automatically promote to Queen if needed
-        if (game.get(source).type == "p") {
-            if (game.turn() == "w" && target[1] == "8") {
-                move += "q";
-            } else if (target[1] == "1") {
-                move += "q";
-            }
-        }
-
-        console.log(move);
-        const gamemove = game.move({ from: source, to: target, promotion: 'q' });
-        console.log("Game move", gamemove);
-        if (!gamemove) {
-            console.log("Invalid move");
-            return 'snapback'; // Invalid move
-        }
-        /*
-        if (board.fen() != game.fen().split(' ')[0]) {
-            console.log("Reposition", board.fen(), game.fen().split(' ')[0]);
-            board.position(game.fen());
-        }*/
-
-        // Todo: update the board with the fen state of game to fix things like en-passant?
-
-        fetch('http://127.0.0.1:5000/make_move', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({move})
-        }).then((response) => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        }).then((body) => {
-            game.load(body['fen']);
-            board.position(game.fen());
-        }).catch((e) => {
-            console.error("Error", e);
-        });
-    }
-
-    function reset() {
-        fetch('http://127.0.0.1:5000/reset', { method: 'POST' })
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            game.reset();
-            board.start();
-        });
-    }
-
-    document.getElementById('reset').addEventListener('click', reset);
-
-    getBoard();
-</script>
+<script src="static/game.js"></script>
 </body>
 </html>

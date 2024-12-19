@@ -16,32 +16,13 @@
             integrity="sha512-oprzqYFJfo4Bx/nNEcSI0xo7ggJrLc+qQ6hrS3zV/Jn0C4dsg4gu+FXW/Vm0jP9CrV7e5e6dcLUYkg3imjfjbw=="
             crossorigin="anonymous"
             referrerpolicy="no-referrer"></script>
-    <style>
-        #board {
-            width: 600px;
-            margin: 20px auto;
-        }
-        #reset {
-            display: block;
-            margin: 10px auto;
-            padding: 10px 20px;
-            font-size: 16px;
-        }
-        #outcome {
-            width: 600px;
-            display: block;
-            margin: auto;
-            padding: 10px 20px;
-            font-size: 16px;
-            text-align: center;
-        }
-    </style>
+    <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
 <div id="board"></div>
 <button id="reset">Reset Game</button>
+<div id="thinking" style="display:none"><span class="a01">Th</span><span class="a02">in</span><span class="a03">ki</span><span class="a04">ng</span><span class="a05">..</span><span class="a06">..</span></div>
 <div id="outcome"></div>
-
 <script src="static/game.js"></script>
 </body>
 </html>

@@ -71,7 +71,11 @@ def make_move(move_request: MoveRequest):
 
     print(time.time(), "Returning engine move", engine_move)
 
-    return {'fen': online_game.get_fen(), 'engineMove': engine_move.uci()}
+    if engine_move is not None:
+        return {'fen': online_game.get_fen(), 'engineMove': engine_move.uci()}
+
+    # There will be no move if the game is over
+    return {'fen': online_game.get_fen(), 'engineMove': None}
 
 
 class ResetRequest(BaseModel):

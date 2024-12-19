@@ -42,11 +42,14 @@ function handleMove(source, target) {
     }
     console.log("Game move", gamemove);
 
+    document.getElementById('thinking').style = "display: block";
+
     fetch('/make_move', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ move })
     }).then((response) => {
+        document.getElementById('thinking').style = "display: none";
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -88,7 +91,7 @@ function reset() {
 function checkGameOver() {
     if (game.game_over()) {
         if (game.in_checkmate()) {
-            outcome = "Checkmate, " + (game.turn() + game.turn() == "w" ? "black" : "white" + " wins.");
+            outcome = "Checkmate, " + ((game.turn() == "w" ? "black" : "white") + " wins.");
         } else if (game.isStaleMate()) {
             outcome = "Stalemate.";
         } else if (game.isThreefoldRepetition()) {

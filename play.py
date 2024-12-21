@@ -3,7 +3,7 @@ from chess import Board, Move
 import time
 
 from tokenisation.decoder import PAWN, KING, FIRST_POSITION, LAST_POSITION, decode, decode_token, FIRST_NUM, LAST_NUM, \
-    encode, SHORT_CASTLE, LONG_CASTLE, decode_position
+    encode, SHORT_CASTLE, LONG_CASTLE, decode_position, decode_pgn
 from model import ChessModel
 
 
@@ -52,7 +52,7 @@ def find_next_move(board, tokens, token_start_idx) -> (int, Move):
             position = token - FIRST_POSITION
 
         if piece is not None and position is not None:
-            print(f"Generated: {piece}{decode_position(position + FIRST_POSITION)}")
+            print(f"Generated: {piece} {decode_position(position + FIRST_POSITION)}")
             valid_move = get_legal_move(board, piece, position)
             if valid_move is not None:
                 # We consumed some valid tokens up until i
@@ -71,6 +71,7 @@ def get_next_human_move(board: Board):
             print(e)
 
 
+# Play on the command line
 def play(play_as):
     b = Board()
 
@@ -127,21 +128,21 @@ def play(play_as):
 
 class OnlineGame:
 
-    def __init__(self):
+    def __init__(self, board, model_state_file, device):
         start_time = time.time()
-        self.b = Board()
+        self.b = board
         model_load_start_time = time.time()
-        self.m = ChessModel("stockfishmodel.pt")
+        self.m = ChessModel(model_state_file, device)
         print("Model load time was", (time.time() - model_load_start_time))
         self.game_tokens = [33]
-        self.play_as = "white"
+        self.play_as = "white"  # play_as is the colour of the human player
         self.reset(self.play_as)
-        self.time_per_move = 10
+        self.time_per_move = 1
         print("Start up time was", (time.time() - start_time))
 
-    def _make_move(self):
+    def get_next_move(self):
         token_idx = len(self.game_tokens)
-        print("Generating moves from position: ", decode(self.game_tokens))
+        print("Generating moves from position: ", decode_pgn(self.game_tokens))
 
         move_start_time = time.time()
         new_move = None
@@ -170,32 +171,38 @@ class OnlineGame:
                         break
                     print("No move found in time limit. Generated random move:", new_move)
 
-        print(time.time(), "Engine played:", new_move)
-        self.b.push(new_move)
-
         if self.play_as == "white":
             # Add a move num token if playing as white
-            self.game_tokens.append(FIRST_NUM + self.b.fullmove_number)
+            self.game_tokens.append(FIRST_NUM + self.b.fullmove_number + 1)
 
         print(time.time(), "Current game tokens")
-        print(decode(self.game_tokens))
+        print(decode_pgn(self.game_tokens))
         return new_move
 
-    def make_move(self, uci_move):
+    def push_uci_move(self, uci_move):
         print(time.time(), "Parsing move", uci_move)
         move = self.b.parse_uci(uci_move)
+        print(time.time(), "Checking game over state")
+        self.update_tokens(move)
+        print(time.time(), "Pushing move to board")
+        self.b.push(move)
+
+    def update_tokens(self, move):
         print(time.time(), "Encoding move", move)
         move_tokens = encode(self.b, move)
         print(time.time(), "Extending tokens")
         self.game_tokens.extend(move_tokens)
-        print(time.time(), "Pushing move to board")
-        self.b.push(move)
-        print(time.time(), "Checking game over state")
+        if self.play_as == "black":
+            self.game_tokens.append(FIRST_NUM + self.b.fullmove_number + 1)
+
+    def play(self):
         if self.b.is_game_over():
             print(f"Game over", self.b.outcome())
             return None
         print(time.time(), "Requesting engine move")
-        engine_move = self._make_move()
+        engine_move = self.get_next_move()
+        print(time.time(), "Engine played:", engine_move)
+        self.b.push(engine_move)
         if self.b.is_game_over():
             print(f"Game over", self.b.outcome())
             winner = "black" if self.play_as == "white" else "black"
@@ -210,8 +217,9 @@ class OnlineGame:
         self.b.reset()
         self.game_tokens = [33]
 
-        # if the other player is black, then we get to make the first move
+        # if the human player is black, then the bot gets to make the first move
         if self.play_as == "black":
-            return self._make_move()
+            return self.play()
+
         return None
 

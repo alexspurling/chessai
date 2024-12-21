@@ -64,6 +64,19 @@ def decode(token_data: []) -> str:
     return " ".join(output)
 
 
+def decode_pgn(token_data: []) -> str:
+
+    output = []
+    for b in token_data:
+        decoded_token = decode_token(b)
+        if decoded_token != "P":
+            output.append(decoded_token)
+            if decoded_token not in "BNQRKx":
+                output.append(" ")
+
+    return "".join(output)
+
+
 encode_piece_map = {
     chess.PAWN: PAWN,
     chess.BISHOP: BISHOP,

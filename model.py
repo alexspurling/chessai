@@ -12,7 +12,6 @@ block_size = 256  # what is the maximum context length for predictions?
 max_iters = 5000
 eval_interval = 100
 learning_rate = 3e-4
-device = "cuda" if torch.cuda.is_available() else "cpu"
 eval_iters = 200
 n_embd = 512
 n_head = 8
@@ -100,8 +99,9 @@ class Block(nn.Module):
 
 class BigramLanguageModel(nn.Module):
 
-    def __init__(self):
+    def __init__(self, device="cpu"):
         super().__init__()
+        self.device = device
         # each token directly reads off the logics for the next token from a lookup table
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
@@ -115,7 +115,7 @@ class BigramLanguageModel(nn.Module):
 
         # idx and targets are both (B, T) tensor of integers
         tok_emb = self.token_embedding_table(idx)  # (batch, time, channel)
-        pos_emb = self.position_embedding_table(torch.arange(T, device=device))  # (T, C)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=self.device))  # (T, C)
         x = tok_emb + pos_emb  # (batch, time, channel)
         x = self.blocks(x)  # (B, T, C)
         x = self.ln_f(x)  # (B, T, C)
@@ -152,13 +152,14 @@ class BigramLanguageModel(nn.Module):
 
 class ChessModel:
 
-    def __init__(self, model_state_file):
+    def __init__(self, model_state_file, device="cpu"):
 
         self.model_state_file = model_state_file
+        self.device = device
 
         print("Device is", device)
 
-        self.model = BigramLanguageModel()
+        self.model = BigramLanguageModel(device=device)
 
         if os.path.exists(model_state_file):
             print(f"Loading existing model from {model_state_file}")
@@ -195,7 +196,7 @@ class ChessModel:
             ix = torch.randint(len(data) - block_size, (batch_size,))
             x = torch.stack([data[i:i+block_size] for i in ix])
             y = torch.stack([data[i+1:i+block_size+1] for i in ix])
-            x, y = x.to(device), y.to(device)
+            x, y = x.to(self.device), y.to(self.device)
             return x, y
 
         # Tell pytorch that we're not going to call backward() (backward-propagation) so it can be more memory efficient
@@ -248,7 +249,7 @@ class ChessModel:
 
     def generate(self, start_with=None, num_moves_to_generate=2):
         start_with = start_with if start_with is not None else [33]
-        idx = torch.tensor([start_with], dtype=torch.long, device=device)
+        idx = torch.tensor([start_with], dtype=torch.long, device=self.device)
         # Retrieve the first batch and convert it from a tensor into a python list
         all_batches = self.m.generate(idx, max_new_tokens=num_moves_to_generate)
         return all_batches[0].tolist()

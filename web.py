@@ -1,9 +1,10 @@
 import time
 
+from chess import Board
 from pydantic import BaseModel
 
 # Import your `find_next_move` function
-from infer import OnlineGame
+from play import OnlineGame
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
@@ -30,7 +31,8 @@ app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 
 # Initialize a chess board
-online_game = OnlineGame()
+board = Board()
+online_game = OnlineGame(board, "stockfishmodel.pt", "cpu")
 
 
 # Serve the index.html for the root path
@@ -67,7 +69,9 @@ def make_move(move_request: MoveRequest):
 
     print(time.time(), "Requesting engine move")
     # Apply the player's move in UCI format e.g. e2e4
-    engine_move = online_game.make_move(move_request.move)
+    online_game.push_uci_move(move_request.move)
+    # And then get the next engine move
+    engine_move = online_game.play()
 
     print(time.time(), "Returning engine move", engine_move)
 

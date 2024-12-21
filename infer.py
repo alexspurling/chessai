@@ -83,7 +83,7 @@ def play(play_as):
         game_tokens.extend(move_tokens)
         b.push(move)
 
-    m = ChessModel("savedmodel.pt")
+    m = ChessModel("stockfishmodel.pt")
 
     while not b.is_checkmate():
         token_idx = len(game_tokens)  # start evaluating the generated tokens from this index
@@ -131,7 +131,7 @@ class OnlineGame:
         start_time = time.time()
         self.b = Board()
         model_load_start_time = time.time()
-        self.m = ChessModel("savedmodel.pt")
+        self.m = ChessModel("stockfishmodel.pt")
         print("Model load time was", (time.time() - model_load_start_time))
         self.game_tokens = [33]
         self.play_as = "white"

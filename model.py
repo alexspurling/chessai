@@ -1,4 +1,3 @@
-import math
 import os.path
 
 import torch
@@ -9,15 +8,15 @@ import time
 
 # Hyperparameters
 batch_size = 64   # How many independent sequences will we process in parallel?
-block_size = 128  # what is the maximum context length for predictions?
+block_size = 256  # what is the maximum context length for predictions?
 max_iters = 5000
-eval_interval = 500
+eval_interval = 100
 learning_rate = 3e-4
-device = "cpu" if torch.cuda.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 eval_iters = 200
-n_embd = 256
-n_head = 4
-n_layer = 3
+n_embd = 512
+n_head = 8
+n_layer = 8
 dropout = 0.2
 
 vocab_size = 256
@@ -43,6 +42,7 @@ class Head(nn.Module):
         wei = q @ k.transpose(-2, -1) * C**-0.5  # (B, T, C) @ (B, C, T) -> (B, T, T)
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float("-inf"))  # (B, T, T)
         wei = F.softmax(wei, dim=-1)  # (B, T, T)
+        wei = self.dropout(wei)
         # perform the weighted aggregation of the values
         v = self.value(x)
         out = wei @ v  # (B, T, T) @ (B, T, C) -> (B, T, C)
@@ -56,10 +56,11 @@ class MultiHeadAttention(nn.Module):
         super().__init__()
         self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
         self.proj = nn.Linear(n_embd, n_embd)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         out = torch.cat([h(x) for h in self.heads], dim=-1)
-        out = self.proj(out)
+        out = self.dropout(self.proj(out))
         return out
 
 
@@ -149,7 +150,7 @@ class BigramLanguageModel(nn.Module):
         return idx
 
 
-class ChessModel():
+class ChessModel:
 
     def __init__(self, model_state_file):
 
@@ -168,12 +169,14 @@ class ChessModel():
         num_params = sum(p.numel() for p in self.m.parameters())
         print(f"{num_params / 1e6:.2f}M parameters")
 
-    def train(self):
+    def train(self, tokendata):
 
         print("Opening training data")
 
-        with open("tokens.bin", "rb") as f:
-            raw_data = f.read(1000000)
+        with open(tokendata, "rb") as f:
+            raw_data = f.read()
+
+        print("Training data loaded", len(raw_data) / 1e6, "MB")
 
         data = torch.tensor(list(raw_data), dtype=torch.long)
 
@@ -181,9 +184,9 @@ class ChessModel():
         print(data.shape, data.dtype)
         print(data[:100])
 
-        n = int(0.9 * len(data))
-        train_data = data[:n]       # Train on the first 90%
-        validation_data = data[n:]  # Validate on the last 10%
+        n = int(0.8 * len(data))
+        train_data = data[:n]       # Train on the first 80%
+        validation_data = data[n:]  # Validate on the last 20%
 
         def get_batch(split):
             # generate a small batch of data of inputs x and targets y
@@ -229,7 +232,7 @@ class ChessModel():
                 torch.save(self.m.state_dict(), self.model_state_file)
 
             # sample a batch of data
-            xb, yb = get_batch("train")  # Not sure why we change the batch size to 32 here
+            xb, yb = get_batch("train")
 
             # evaluate the loss
             logits, loss = self.m(xb, yb)

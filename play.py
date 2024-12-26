@@ -128,14 +128,14 @@ def play(play_as):
 
 class OnlineGame:
 
-    def __init__(self, board, model_state_file, device):
+    def __init__(self, board, model_state_file, params, device, play_as="white"):
         start_time = time.time()
         self.b = board
         model_load_start_time = time.time()
-        self.m = ChessModel(model_state_file, device)
+        self.m = ChessModel(model_state_file, params=params, device=device)
         print("Model load time was", (time.time() - model_load_start_time))
         self.game_tokens = [33]
-        self.play_as = "white"  # play_as is the colour of the human player
+        self.play_as = play_as  # play_as is the colour of the human player
         self.reset(self.play_as)
         self.time_per_move = 1
         print("Start up time was", (time.time() - start_time))

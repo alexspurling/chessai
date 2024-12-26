@@ -6,17 +6,34 @@ from torch.nn import functional as F
 from tokenisation.decoder import decode
 import time
 
+
 # Hyperparameters
-batch_size = 64   # How many independent sequences will we process in parallel?
-block_size = 256  # what is the maximum context length for predictions?
-max_iters = 5000
-eval_interval = 100
-learning_rate = 3e-4
-eval_iters = 200
-n_embd = 512
-n_head = 8
-n_layer = 8
-dropout = 0.2
+class Small:
+    batch_size = 64   # How many independent sequences will we process in parallel?
+    block_size = 128  # what is the maximum context length for predictions?
+    max_iters = 5000
+    eval_interval = 500
+    learning_rate = 3e-4
+    device = "cpu" if torch.cuda.is_available() else "cpu"
+    eval_iters = 200
+    n_embd = 256
+    n_head = 4
+    n_layer = 3
+    dropout = 0.2
+
+
+class Medium:
+    batch_size = 64   # How many independent sequences will we process in parallel?
+    block_size = 256  # what is the maximum context length for predictions?
+    max_iters = 5000
+    eval_interval = 100
+    learning_rate = 3e-4
+    eval_iters = 200
+    n_embd = 512
+    n_head = 8
+    n_layer = 8
+    dropout = 0.2
+
 
 vocab_size = 256
 
@@ -24,14 +41,14 @@ vocab_size = 256
 class Head(nn.Module):
     """ one head of self-attention """
 
-    def __init__(self, head_size):
+    def __init__(self, head_size, params):
         super().__init__()
-        self.key = nn.Linear(n_embd, head_size, bias=False)
-        self.query = nn.Linear(n_embd, head_size, bias=False)
-        self.value = nn.Linear(n_embd, head_size, bias=False)
-        self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
+        self.key = nn.Linear(params.n_embd, head_size, bias=False)
+        self.query = nn.Linear(params.n_embd, head_size, bias=False)
+        self.value = nn.Linear(params.n_embd, head_size, bias=False)
+        self.register_buffer("tril", torch.tril(torch.ones(params.block_size, params.block_size)))
 
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(params.dropout)
 
     def forward(self, x):
         B, T, C = x.shape
@@ -51,11 +68,11 @@ class Head(nn.Module):
 class MultiHeadAttention(nn.Module):
     """ multiple heads of self-attention in parallel """
 
-    def __init__(self, num_heads, head_size):
+    def __init__(self, num_heads, head_size, params):
         super().__init__()
-        self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
-        self.proj = nn.Linear(n_embd, n_embd)
-        self.dropout = nn.Dropout(dropout)
+        self.heads = nn.ModuleList([Head(head_size, params) for _ in range(num_heads)])
+        self.proj = nn.Linear(params.n_embd, params.n_embd)
+        self.dropout = nn.Dropout(params.dropout)
 
     def forward(self, x):
         out = torch.cat([h(x) for h in self.heads], dim=-1)
@@ -66,13 +83,13 @@ class MultiHeadAttention(nn.Module):
 class FeedForward(nn.Module):
     """ a simple linear layer followed by a non-linearity """
 
-    def __init__(self, n_embd):
+    def __init__(self, n_embd, params):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, 4 * n_embd),
             nn.ReLU(),
             nn.Linear(4 * n_embd, n_embd),
-            nn.Dropout(dropout),
+            nn.Dropout(params.dropout),
         )
 
     def forward(self, x):
@@ -82,11 +99,11 @@ class FeedForward(nn.Module):
 class Block(nn.Module):
     """ Transformer block: communication followed by computation """
 
-    def __init__(self, n_embd, n_head):
+    def __init__(self, n_embd, n_head, params):
         super().__init__()
         head_size = n_embd // n_head
-        self.sa = MultiHeadAttention(n_head, head_size)
-        self.ffwd = FeedForward(n_embd)
+        self.sa = MultiHeadAttention(n_head, head_size, params)
+        self.ffwd = FeedForward(n_embd, params)
         # Layer norm normalises values to mean = 0 and stddev = 1
         self.ln1 = nn.LayerNorm(n_embd)
         self.ln2 = nn.LayerNorm(n_embd)
@@ -99,16 +116,17 @@ class Block(nn.Module):
 
 class BigramLanguageModel(nn.Module):
 
-    def __init__(self, device="cpu"):
+    def __init__(self, params, device="cpu"):
         super().__init__()
+        self.params = params
         self.device = device
         # each token directly reads off the logics for the next token from a lookup table
-        self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
-        self.position_embedding_table = nn.Embedding(block_size, n_embd)
+        self.token_embedding_table = nn.Embedding(vocab_size, params.n_embd)
+        self.position_embedding_table = nn.Embedding(params.block_size, params.n_embd)
         # i.e. 4 heads of 8-dimensional self-attention = 32 (same as n_embd)
-        self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
-        self.ln_f = nn.LayerNorm(n_embd)
-        self.lm_head = nn.Linear(n_embd, vocab_size)
+        self.blocks = nn.Sequential(*[Block(params.n_embd, n_head=params.n_head, params=params) for _ in range(params.n_layer)])
+        self.ln_f = nn.LayerNorm(params.n_embd)
+        self.lm_head = nn.Linear(params.n_embd, vocab_size)
 
     def forward(self, idx, targets=None):
         B, T = idx.shape
@@ -136,7 +154,7 @@ class BigramLanguageModel(nn.Module):
         # idx is (B, T) array of indices in the current context
         for _ in range(max_new_tokens):
             # crop idx to the last block_size tokens
-            idx_cond = idx[:, -block_size:]
+            idx_cond = idx[:, -self.params.block_size:]
             # get the predictions
             logits, loss = self(idx_cond)
             # focus only on the last time step
@@ -152,14 +170,15 @@ class BigramLanguageModel(nn.Module):
 
 class ChessModel:
 
-    def __init__(self, model_state_file, device="cpu"):
+    def __init__(self, model_state_file, params, device="cpu"):
 
         self.model_state_file = model_state_file
+        self.params = params
         self.device = device
 
         print("Device is", device)
 
-        self.model = BigramLanguageModel(device=device)
+        self.model = BigramLanguageModel(device=device, params=params)
 
         if os.path.exists(model_state_file):
             print(f"Loading existing model from {model_state_file}")
@@ -193,9 +212,9 @@ class ChessModel:
             # generate a small batch of data of inputs x and targets y
             # the target is the token that comes after the tokens in the batch
             data = train_data if split == "train" else validation_data
-            ix = torch.randint(len(data) - block_size, (batch_size,))
-            x = torch.stack([data[i:i+block_size] for i in ix])
-            y = torch.stack([data[i+1:i+block_size+1] for i in ix])
+            ix = torch.randint(len(data) - self.params.block_size, (self.params.batch_size,))
+            x = torch.stack([data[i:i+self.params.block_size] for i in ix])
+            y = torch.stack([data[i+1:i+self.params.block_size+1] for i in ix])
             x, y = x.to(self.device), y.to(self.device)
             return x, y
 
@@ -205,8 +224,8 @@ class ChessModel:
             out = {}
             self.model.eval()  # Set model to evaluation phase
             for split in ["train", "val"]:
-                losses = torch.zeros(eval_iters)
-                for k in range(eval_iters):
+                losses = torch.zeros(self.params.eval_iters)
+                for k in range(self.params.eval_iters):
                     X, Y = get_batch(split)
                     logits, loss = self.model(X, Y)
                     losses[k] = loss.item()
@@ -216,17 +235,17 @@ class ChessModel:
 
         # Adam is an optimizer like Stochastic Gradient Descent but apparently better
         # Learning rate 1e-3 can be changed?
-        optimizer = torch.optim.AdamW(self.m.parameters(), lr=learning_rate)
+        optimizer = torch.optim.AdamW(self.m.parameters(), lr=self.params.learning_rate)
         start_time = time.time()
 
         # Initialise training variables
         xb, yb = get_batch("train")
         logits, loss = self.m(xb, yb)
 
-        for i in range(max_iters):
+        for i in range(self.params.max_iters):
 
             # Every once in a while evaluate the loss on train and val sets
-            if i % eval_interval == 0:
+            if i % self.params.eval_interval == 0:
                 losses = estimate_loss()
                 print(f"step {i}: train loss {losses['train']:.4f}, val, loss {losses['val']:.4f}")
                 # save current state of the model to disk

@@ -1,5 +1,5 @@
-from model import ChessModel
+from model import ChessModel, Medium
 
-m = ChessModel("stockfishmodel.pt", "cuda")
+m = ChessModel("stockfishmodel.pt", Medium, "cuda")
 m.train("tokens_stockfish.bin")
 

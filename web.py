@@ -4,8 +4,7 @@ from chess import Board
 from pydantic import BaseModel
 
 from model import Medium
-# Import your `find_next_move` function
-from play import OnlineGame
+from play_chars import OnlineGameChars
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
@@ -33,7 +32,7 @@ app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 # Initialize a chess board
 board = Board()
-online_game = OnlineGame(board, "stockfishmodel.pt", Medium, "cpu")
+online_game = OnlineGameChars(board, "stockfishmodel_chars.pt", Medium, "cpu")
 
 
 # Serve the index.html for the root path

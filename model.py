@@ -1,8 +1,11 @@
+import gzip
 import os.path
 
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+
+from tokenisation.charactertokeniser import encode
 from tokenisation.decoder import decode
 import time
 
@@ -33,9 +36,6 @@ class Medium:
     n_head = 8
     n_layer = 8
     dropout = 0.2
-
-
-vocab_size = 256
 
 
 class Head(nn.Module):
@@ -116,7 +116,7 @@ class Block(nn.Module):
 
 class BigramLanguageModel(nn.Module):
 
-    def __init__(self, params, device="cpu"):
+    def __init__(self, vocab_size, params, device="cpu"):
         super().__init__()
         self.params = params
         self.device = device
@@ -170,7 +170,7 @@ class BigramLanguageModel(nn.Module):
 
 class ChessModel:
 
-    def __init__(self, model_state_file, params, device="cpu"):
+    def __init__(self, model_state_file, vocab_size, params, device="cpu"):
 
         self.model_state_file = model_state_file
         self.params = params
@@ -178,7 +178,7 @@ class ChessModel:
 
         print("Device is", device)
 
-        self.model = BigramLanguageModel(device=device, params=params)
+        self.model = BigramLanguageModel(vocab_size, device=device, params=params)
 
         if os.path.exists(model_state_file):
             print(f"Loading existing model from {model_state_file}")
@@ -193,14 +193,26 @@ class ChessModel:
 
         print("Opening training data")
 
-        with open(tokendata, "rb") as f:
-            raw_data = f.read()
+        input_data = []
+        line_count = 0
 
-        print("Training data loaded", len(raw_data) / 1e6, "MB")
+        with gzip.open(tokendata, "rt") as f:
+            for line in f:
+                input_data.extend(encode(line))
+                line_count += 1
+                if line_count % 100000 == 0:
+                    print("Encoded lines: ", line_count, ". Total data: ", len(input_data) / 1e6, "MB")
+                    break
+                # if line_count == 5000000:
+                #     break
 
-        data = torch.tensor(list(raw_data), dtype=torch.long)
+        print("Training data loaded", len(input_data) / 1e6, "MB")
 
-        print("Example data")
+        print("Encoding...")
+
+        data = torch.tensor(input_data, dtype=torch.long)
+
+        print("Data encoded. Example data:")
         print(data.shape, data.dtype)
         print(data[:100])
 

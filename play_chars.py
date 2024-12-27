@@ -2,9 +2,8 @@ import chess
 from chess import Board, Move
 import time
 
-from tokenisation.decoder import PAWN, KING, FIRST_POSITION, LAST_POSITION, decode, decode_token, FIRST_NUM, LAST_NUM, \
-    encode, SHORT_CASTLE, LONG_CASTLE, decode_position, decode_pgn
 from model import ChessModel
+from tokenisation.charactertokeniser import decode, encode
 
 
 def get_legal_move(board, piece, position):
@@ -21,43 +20,21 @@ def get_legal_move(board, piece, position):
 def find_next_move(board, tokens, token_start_idx) -> (int, Move):
     piece = None
     position = None
-    for i in range(token_start_idx, len(tokens)):
-        token = tokens[i]
-        # If this is a move token then ensure it represents the current move num
-        if FIRST_NUM <= token <= LAST_NUM:
-            if token - FIRST_NUM != board.fullmove_number:
-                return [], None
-        elif token == SHORT_CASTLE:
-            # True if white
-            piece = "K"
-            if board.turn:
-                position = chess.G1
-            else:
-                position = chess.G8
-        elif token == LONG_CASTLE:
-            # True if white
-            piece = "K"
-            if board.turn:
-                position = chess.C1
-            else:
-                position = chess.C8
-        # Keep track of the last piece
-        # Keep track of the last position
-        elif PAWN <= token <= KING:
-            piece = decode_token(token)
-            # position = None
-        elif FIRST_POSITION <= token <= LAST_POSITION:
-            # Gives a number for the square between 0 and 63 which just happens to also be how the chess library
-            # encodes positions
-            position = token - FIRST_POSITION
+    decoded_tokens = decode(tokens)
+    delim_pos = decoded_tokens.find(" ", token_start_idx)
+    if delim_pos == -1:
+        delim_pos = decoded_tokens.find("#", token_start_idx)
+    if delim_pos == -1:
+        delim_pos = decoded_tokens.find("\n", token_start_idx)
+    if delim_pos == -1:
+        delim_pos = len(tokens)
+    next_move = decoded_tokens[token_start_idx:delim_pos]
 
-        if piece is not None and position is not None:
-            print(f"Generated: {piece} {decode_position(position + FIRST_POSITION)}")
-            valid_move = get_legal_move(board, piece, position)
-            if valid_move is not None:
-                # We consumed some valid tokens up until i
-                return i + 1, valid_move
-    return [], None
+    try:
+        valid_move = board.parse_san(next_move)
+        return delim_pos, valid_move
+    except ValueError:
+        return [], None
 
 
 def get_next_human_move(board: Board):
@@ -65,8 +42,7 @@ def get_next_human_move(board: Board):
         try:
             print(board)
             print("Your move:")
-            move = input()
-            return board.parse_san(move)
+            return input()
         except ValueError as e:
             print(e)
 
@@ -75,12 +51,13 @@ def get_next_human_move(board: Board):
 def play(play_as):
     b = Board()
 
-    game_tokens = [33]
+    game_tokens = encode("\n1.")
 
     if play_as == "white":
         # We need to ask the human for the first move
         move = get_next_human_move(b)
-        move_tokens = encode(b, move)
+        move_san = b.san(move)
+        move_tokens = encode(move_san)
         game_tokens.extend(move_tokens)
         b.push(move)
 
@@ -110,13 +87,13 @@ def play(play_as):
 
             # Ask the human for the next move
             human_move = get_next_human_move(b)
-            move_tokens = encode(b, human_move)
+            move_tokens = encode(human_move)
 
-            b.push(human_move)
+            b.push_san(human_move)
 
             if play_as == "white":
                 # Add a move num token if playing as white
-                game_tokens.append(FIRST_NUM + b.fullmove_number)
+                game_tokens.extend(encode(f"{b.fullmove_number}."))
             game_tokens.extend(move_tokens)
 
         else:
@@ -126,15 +103,15 @@ def play(play_as):
 # play("black")
 
 
-class OnlineGame:
+class OnlineGameChars:
 
     def __init__(self, board, model_state_file, params, device, play_as="white"):
         start_time = time.time()
         self.b = board
         model_load_start_time = time.time()
-        self.m = ChessModel(model_state_file, vocab_size=256, params=params, device=device)
+        self.m = ChessModel(model_state_file, vocab_size=44, params=params, device=device)
         print("Model load time was", (time.time() - model_load_start_time))
-        self.game_tokens = [33]
+        self.game_tokens = encode("\n1.")
         self.play_as = play_as  # play_as is the colour of the human player
         self.reset(self.play_as)
         self.time_per_move = 1
@@ -142,17 +119,18 @@ class OnlineGame:
 
     def get_next_move(self):
         token_idx = len(self.game_tokens)
-        print("Generating moves from position: ", decode_pgn(self.game_tokens))
+        print("Generating moves from position:", decode(self.game_tokens))
 
         move_start_time = time.time()
         new_move = None
         while new_move is None:
             print(time.time(), "Generating tokens")
             generate_start_time = time.time()
-            tokens = self.m.generate(self.game_tokens, num_moves_to_generate=4)
+            tokens = self.m.generate(self.game_tokens, num_moves_to_generate=6)
             new_tokens = tokens[len(self.game_tokens):]
             generate_time = time.time() - generate_start_time
             print(time.time(), "Generated new tokens", new_tokens, "in", generate_time)
+            print(time.time(), "New tokens are:", decode(new_tokens))
             print(time.time(), "Finding next move")
             (valid_token_idx, new_move) = find_next_move(self.b, tokens, token_idx)
             print(time.time(), "Found move", new_move)
@@ -160,23 +138,25 @@ class OnlineGame:
             if new_move is not None:
                 # Reset the game tokens to only include those we deemed to be valid
                 self.game_tokens = tokens[:valid_token_idx]
+                self.game_tokens.extend(encode(" "))
             else:
                 print("Generated invalid move")
                 # print("Generated invalid move:", tokens[token_idx:])
                 if time.time() - move_start_time > self.time_per_move:
                     for new_move in self.b.generate_legal_moves():
                         # Add the random move to our encoded tokens list
-                        move_tokens = encode(self.b, new_move)
+                        move_tokens = encode(self.b.san(new_move))
                         self.game_tokens.extend(move_tokens)
+                        self.game_tokens.extend(encode(" "))
                         break
                     print("No move found in time limit. Generated random move:", new_move)
 
         if self.play_as == "white":
             # Add a move num token if playing as white
-            self.game_tokens.append(FIRST_NUM + self.b.fullmove_number + 1)
+            self.game_tokens.extend(encode(f"{self.b.fullmove_number + 1}."))
 
         print(time.time(), "Current game tokens")
-        print(decode_pgn(self.game_tokens))
+        print(decode(self.game_tokens))
         return new_move
 
     def push_uci_move(self, uci_move):
@@ -189,11 +169,11 @@ class OnlineGame:
 
     def update_tokens(self, move):
         print(time.time(), "Encoding move", move)
-        move_tokens = encode(self.b, move)
+        move_tokens = encode(f"{self.b.san(move)} ")
         print(time.time(), "Extending tokens")
         self.game_tokens.extend(move_tokens)
         if self.play_as == "black":
-            self.game_tokens.append(FIRST_NUM + self.b.fullmove_number + 1)
+            self.game_tokens.extend(encode(f"{self.b.fullmove_number + 1}."))
 
     def play(self):
         if self.b.is_game_over():
@@ -215,7 +195,7 @@ class OnlineGame:
     def reset(self, play_as):
         self.play_as = play_as
         self.b.reset()
-        self.game_tokens = [33]
+        self.game_tokens = encode("\n1.")
 
         # if the human player is black, then the bot gets to make the first move
         if self.play_as == "black":

@@ -1,0 +1,4 @@
+stockfishmodel.pt filter=lfs diff=lfs merge=lfs -text
+stockfishmodel_chars.pt filter=lfs diff=lfs merge=lfs -text
+savedmodel.pt filter=lfs diff=lfs merge=lfs -text
+savedmodel2.pt filter=lfs diff=lfs merge=lfs -text

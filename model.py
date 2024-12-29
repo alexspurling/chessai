@@ -1,11 +1,10 @@
-import gzip
 import os.path
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from tokenisation.charactertokeniser import encode
 from tokenisation.decoder import decode
 import time
 
@@ -35,6 +34,19 @@ class Medium:
     n_embd = 512
     n_head = 8
     n_layer = 8
+    dropout = 0.2
+
+
+class Large:
+    batch_size = 64   # How many independent sequences will we process in parallel?
+    block_size = 256  # what is the maximum context length for predictions?
+    max_iters = 5000
+    eval_interval = 100
+    learning_rate = 1e-4
+    eval_iters = 200
+    n_embd = 512
+    n_head = 8
+    n_layer = 16
     dropout = 0.2
 
 
@@ -189,44 +201,23 @@ class ChessModel:
         num_params = sum(p.numel() for p in self.m.parameters())
         print(f"{num_params / 1e6:.2f}M parameters")
 
-    def train(self, tokendata):
+    def train(self, tokendata_file):
 
-        print("Opening training data")
+        print("Loading token data")
 
-        input_data = []
-        line_count = 0
+        n = os.path.getsize(tokendata_file)
 
-        with gzip.open(tokendata, "rt") as f:
-            for line in f:
-                input_data.extend(encode(line))
-                line_count += 1
-                if line_count % 100000 == 0:
-                    print("Encoded lines: ", line_count, ". Total data: ", len(input_data) / 1e6, "MB")
-                    break
-                # if line_count == 5000000:
-                #     break
-
-        print("Training data loaded", len(input_data) / 1e6, "MB")
-
-        print("Encoding...")
-
-        data = torch.tensor(input_data, dtype=torch.long)
-
-        print("Data encoded. Example data:")
-        print(data.shape, data.dtype)
-        print(data[:100])
-
-        n = int(0.8 * len(data))
-        train_data = data[:n]       # Train on the first 80%
-        validation_data = data[n:]  # Validate on the last 20%
+        # Train on the first 80% and validate on the last 20%
+        train_data = np.memmap(tokendata_file, dtype=np.uint8, mode="r", shape=(int(n*0.8),))
+        validation_data = np.memmap(tokendata_file, dtype=np.uint8, mode="r", offset=int(n*0.8))
 
         def get_batch(split):
             # generate a small batch of data of inputs x and targets y
             # the target is the token that comes after the tokens in the batch
             data = train_data if split == "train" else validation_data
             ix = torch.randint(len(data) - self.params.block_size, (self.params.batch_size,))
-            x = torch.stack([data[i:i+self.params.block_size] for i in ix])
-            y = torch.stack([data[i+1:i+self.params.block_size+1] for i in ix])
+            x = torch.stack([torch.from_numpy((data[i:i+self.params.block_size]).astype(np.int64)) for i in ix])
+            y = torch.stack([torch.from_numpy((data[i+1:i+1+self.params.block_size]).astype(np.int64)) for i in ix])
             x, y = x.to(self.device), y.to(self.device)
             return x, y
 

@@ -1,8 +1,9 @@
 import gzip
 
 
-dataset_file = "C:\\Users\\alexs\\Downloads\\stockfish_dataset\\stockfish_dataset.csv"
+dataset_file = "/home/alex/Downloads/stockfish_dataset.csv"
 games_file = "../stockfishgames2.gz"
+tokens_file = "../stockfishgames_tokens.gz"
 
 
 def extract_games():
@@ -69,3 +70,16 @@ def encode(str_data):
 
 def decode(tokens_list):
     return "".join([itos[i] for i in tokens_list])
+
+
+# print("Tokenising games")
+#
+# with gzip.open(games_file, 'rt') as f:
+#     with open(tokens_file, 'wb') as w:
+#         line_count = 0
+#         for line in f:
+#             line_count += 1
+#             w.write(bytes(encode(line)))
+#
+#             if line_count % 100000 == 0:
+#                 print("Line count", line_count)
